@@ -1,7 +1,7 @@
 # MeterZone на Synology DSM / любом Linux с Docker.
 #
-# Ничего не собирается: образ уже готов и скачивается с GitHub.
-# База и резервные копии остаются в папке ./data рядом с этим файлом.
+# Ничего не собирается и никакие папки создавать не нужно:
+# образ скачивается с GitHub, том данных Docker создаёт сам.
 
 services:
   meterzone:
@@ -28,8 +28,10 @@ services:
       # Раскомментируйте для доступа не только из локальной сети.
       # ALLOW_PUBLIC: "1"
 
+    # Именованный том: Docker создаёт его сам, папку руками готовить не нужно.
+    # Если файлы нужны в File Station — см. README, раздел «Папка вместо тома».
     volumes:
-      - ./data:/data
+      - meterzone-data:/data
 
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8099/healthz"]
@@ -43,3 +45,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  meterzone-data:

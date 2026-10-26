@@ -12,7 +12,8 @@
 
 ## Synology DSM 7 (Container Manager)
 
-Ничего компилировать не нужно — образ скачивается с GitHub.
+Ничего не компилируется и **никакие папки создавать не нужно**:
+образ скачивается с GitHub, том данных Docker создаёт сам.
 
 1. В File Station создайте `/volume1/docker/meterzone`
    и положите туда **только** [`docker-compose.yml`](docker-compose.yml).
@@ -21,8 +22,12 @@
    источник — существующий `docker-compose.yml`.
 3. Откройте `http://адрес-NAS:8099`.
 
-Папку `data` создавать не надо: Docker создаст её при первом запуске,
-а внутри окажутся база и резервные копии.
+База и резервные копии живут в томе `meterzone-data`. Скачать их
+можно из интерфейса приложения: «Настройки» → «Резервные копии».
+
+Если проект уже создавался с папкой `./data` и падал с ошибкой
+`Bind mount failed: ... does not exist` — удалите проект и создайте
+заново с этим файлом: зависимость от папки убрана.
 
 ### Перенос базы с роутера
 
@@ -30,23 +35,55 @@
    ```sh
    /opt/etc/init.d/S99meterzone stop
    ```
-2. Заберите базу:
+2. Заберите базу на компьютер:
    ```sh
    scp root@192.168.x.x:/opt/meterzone/data/meterzone.db ./meterzone.db
    ```
-3. Положите её в `/volume1/docker/meterzone/data/meterzone.db`
-   **до** первого запуска контейнера.
+3. Положите файл на NAS, например в `/volume1/docker/meterzone/meterzone.db`,
+   и скопируйте в том (контейнер должен быть уже создан):
+   ```sh
+   cd /volume1/docker/meterzone
+   sudo docker compose stop
+   sudo docker compose run --rm --entrypoint sh meterzone -c 'rm -f /data/meterzone.db*'
+   sudo docker cp meterzone.db meterzone-meterzone-1:/data/meterzone.db
+   sudo docker compose start
+   ```
+
+Проще, без SSH: запустите приложение с пустой базой и загрузите файл
+через интерфейс — «Настройки» → «Импорт старой базы». На пустой базе
+результат тот же.
 
 ### Обновление
 
-Container Manager → проект `meterzone` → **Действие** → **Загрузить образ**
-(или «Скачать» / «Обновить»). База в `data/` не затрагивается.
-
-Либо по SSH:
-
 ```sh
-cd /volume1/docker/meterzone && sudo docker compose pull && sudo docker compose up -d
+cd /volume1/docker/meterzone
+sudo docker compose pull
+sudo docker compose up -d
 ```
+
+В Container Manager то же самое: проект `meterzone` → **Действие** →
+**Загрузить образ** и пересоздать. Том `meterzone-data` не затрагивается.
+
+### Папка вместо тома
+
+Если файлы базы нужны прямо в File Station, замените в `docker-compose.yml`
+
+```yaml
+    volumes:
+      - meterzone-data:/data
+```
+
+на
+
+```yaml
+    volumes:
+      - /volume1/docker/meterzone/data:/data
+```
+
+и **сначала создайте папку** `/volume1/docker/meterzone/data` в File Station:
+Synology не создаёт её автоматически, и контейнер упадёт с
+`Bind mount failed`. Строку `volumes: meterzone-data:` в конце файла
+тогда можно удалить.
 
 ## Keenetic (Entware)
 
@@ -63,11 +100,13 @@ curl -fsSL https://github.com/ognis163/meterzone-dist/releases/latest/download/i
 curl -fsSL https://github.com/ognis163/meterzone-dist/releases/latest/download/install-keenetic.sh | PORT=8090 sh
 ```
 
-## Проверка образа
+## Проверка образа вручную
 
 ```sh
-docker run --rm -p 8099:8099 -v /tmp/mz:/data ghcr.io/ognis163/meterzone-dist:latest
+docker run -d --name mz-test -p 8099:8099 -v mz-test-data:/data \
+  ghcr.io/ognis163/meterzone-dist:latest
 curl http://127.0.0.1:8099/healthz
+docker rm -f mz-test
 ```
 
 ## Лицензия
