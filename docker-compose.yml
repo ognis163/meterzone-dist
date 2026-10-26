@@ -1,0 +1,45 @@
+# MeterZone на Synology DSM / любом Linux с Docker.
+#
+# Ничего не собирается: образ уже готов и скачивается с GitHub.
+# База и резервные копии остаются в папке ./data рядом с этим файлом.
+
+services:
+  meterzone:
+    image: ghcr.io/ognis163/meterzone-dist:latest
+    restart: unless-stopped
+
+    ports:
+      - "8099:8099"
+
+    environment:
+      # Часовой пояс — замените на свой, если он другой.
+      TZ: Europe/Astrakhan
+      APP_TZ: Europe/Astrakhan
+
+      HOST: 0.0.0.0
+      PORT: "8099"
+
+      APP_DB: /data/meterzone.db
+      APP_BACKUP_DIR: /data/backups
+
+      # Порт задаётся здесь, а не из интерфейса приложения.
+      PORT_FIXED: "1"
+
+      # Раскомментируйте для доступа не только из локальной сети.
+      # ALLOW_PUBLIC: "1"
+
+    volumes:
+      - ./data:/data
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8099/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
