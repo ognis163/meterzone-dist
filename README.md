@@ -12,22 +12,30 @@
 
 ## Synology DSM 7 (Container Manager)
 
-Ничего не компилируется и **никакие папки создавать не нужно**:
-образ скачивается с GitHub, том данных Docker создаёт сам.
+Образ скачивается с GitHub, компилировать нечего. Папка для данных
+должна существовать заранее — Synology её не создаёт.
 
-1. В File Station создайте `/volume1/docker/meterzone`
-   и положите туда **только** [`docker-compose.yml`](docker-compose.yml).
-2. Container Manager → **Проект** → **Создать**:
+1. В File Station создайте `/volume1/docker/meterzone` и **внутри неё
+   папку `data`**. Без неё контейнер упадёт с
+   `Bind mount failed: '/volume1/docker/meterzone/data' does not exist`.
+2. Положите в `/volume1/docker/meterzone`
+   файл [`docker-compose.yml`](docker-compose.yml) — рядом с папкой `data`.
+3. Container Manager → **Проект** → **Создать**:
    имя `meterzone`, путь `/volume1/docker/meterzone`,
    источник — существующий `docker-compose.yml`.
-3. Откройте `http://адрес-NAS:8099`.
+4. Откройте `http://адрес-NAS:8099`.
 
-База и резервные копии живут в томе `meterzone-data`. Скачать их
-можно из интерфейса приложения: «Настройки» → «Резервные копии».
+Итоговая структура:
 
-Если проект уже создавался с папкой `./data` и падал с ошибкой
-`Bind mount failed: ... does not exist` — удалите проект и создайте
-заново с этим файлом: зависимость от папки убрана.
+```
+/volume1/docker/meterzone/
+├── docker-compose.yml
+└── data/                  ← создать заранее
+    └── backups/           ← появится само
+```
+
+База и резервные копии лежат в `data/` и видны в File Station.
+Скачать копию можно и из интерфейса: «Настройки» → «Резервные копии».
 
 ### Перенос базы с роутера
 
@@ -39,19 +47,22 @@
    ```sh
    scp root@192.168.x.x:/opt/meterzone/data/meterzone.db ./meterzone.db
    ```
-3. Положите файл на NAS, например в `/volume1/docker/meterzone/meterzone.db`,
-   и скопируйте в том (контейнер должен быть уже создан):
+3. Скопируйте файл в папку данных на NAS (приложение при этом остановлено):
    ```sh
    cd /volume1/docker/meterzone
    sudo docker compose stop
-   sudo docker compose run --rm --entrypoint sh meterzone -c 'rm -f /data/meterzone.db*'
-   sudo docker cp meterzone.db meterzone-meterzone-1:/data/meterzone.db
+   rm -f data/meterzone.db data/meterzone.db-wal data/meterzone.db-shm
+   cp meterzone.db data/meterzone.db
    sudo docker compose start
    ```
 
-Проще, без SSH: запустите приложение с пустой базой и загрузите файл
-через интерфейс — «Настройки» → «Импорт старой базы». На пустой базе
-результат тот же.
+Без SSH то же самое делается в File Station: остановите проект,
+удалите файлы `meterzone.db*` из папки `data`, положите туда
+скачанный `meterzone.db` и запустите проект.
+
+Если проще — запустите приложение с пустой базой и загрузите файл
+через интерфейс: «Настройки» → «Импорт старой базы».
+На пустой базе результат тот же.
 
 ### Обновление
 
@@ -62,28 +73,33 @@ sudo docker compose up -d
 ```
 
 В Container Manager то же самое: проект `meterzone` → **Действие** →
-**Загрузить образ** и пересоздать. Том `meterzone-data` не затрагивается.
+**Загрузить образ** и пересоздать. Папка `data` не затрагивается.
 
-### Папка вместо тома
+### Если папку создать не получается
 
-Если файлы базы нужны прямо в File Station, замените в `docker-compose.yml`
+Можно жить на именованном томе, который Docker создаёт сам: замените
 
 ```yaml
     volumes:
-      - meterzone-data:/data
+      - ./data:/data
 ```
 
 на
 
 ```yaml
     volumes:
-      - /volume1/docker/meterzone/data:/data
+      - meterzone-data:/data
 ```
 
-и **сначала создайте папку** `/volume1/docker/meterzone/data` в File Station:
-Synology не создаёт её автоматически, и контейнер упадёт с
-`Bind mount failed`. Строку `volumes: meterzone-data:` в конце файла
-тогда можно удалить.
+и добавьте в конец файла
+
+```yaml
+volumes:
+  meterzone-data:
+```
+
+Тогда папку готовить не нужно, но база будет лежать внутри Docker
+(`/volume1/@docker/volumes/meterzone-data`), а не в File Station.
 
 ## Keenetic (Entware)
 
