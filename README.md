@@ -6,6 +6,11 @@
 счётчиков, начислений и оплат. Здесь **ничего не нужно компилировать**:
 образ берётся готовым с GitHub, бинарник лежит в Releases.
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ognis163/MeterZone/main/docs/screens/home-desktop.png" width="49%" alt="Показания на компьютере">
+  <img src="https://raw.githubusercontent.com/ognis163/MeterZone/main/docs/screens/home-mobile.png" width="22%" alt="Показания на телефоне">
+</p>
+
 | Что | Где |
 |---|---|
 | Образ Docker (amd64 + arm64) | `ghcr.io/ognis163/meterzone-dist:latest` |
