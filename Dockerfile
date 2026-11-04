@@ -31,4 +31,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 ENTRYPOINT ["/app/meterzone"]
 
-# MeterZone 1.5.5
+# MeterZone 1.5.7
