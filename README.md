@@ -116,3 +116,7 @@ curl -fsSL https://github.com/ognis163/meterzone-dist/releases/latest/download/i
 ## Лицензия
 
 MIT — как и у [MeterZone](https://github.com/ognis163/MeterZone).
+
+## Версия
+
+Текущая версия — **1.5.4** (образ `ghcr.io/ognis163/meterzone-dist:1.5.4`).
